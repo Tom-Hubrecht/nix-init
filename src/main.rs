@@ -384,7 +384,13 @@ async fn run() -> Result<()> {
             }
 
             if is_target_for_packaging(subdir_path) {
-                sourceroot_candidates.push(subdir.file_name());
+                if let Some(rel_path) = subdir_path
+                    .strip_prefix(&root_src_dir)
+                    .expect("Failed to strip the root source directory prefix")
+                    .to_str()
+                {
+                    sourceroot_candidates.push(rel_path.to_owned());
+                }
             }
 
             // Recurse into that subdir.
@@ -421,7 +427,7 @@ async fn run() -> Result<()> {
         None
     };
     let source_root_expr = match source_root {
-        Some(subdir) => format!("\nsourceRoot = \"source/{}\";", subdir.to_string_lossy()),
+        Some(subdir) => format!("\n  sourceRoot = \"source/{}\";", subdir.to_string_lossy()),
         None => "".to_string(),
     };
 
