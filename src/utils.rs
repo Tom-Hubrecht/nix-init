@@ -1,10 +1,23 @@
-use std::{future::Future, io::BufRead, path::Path, pin::Pin, process::Output};
+use std::{
+    future::Future,
+    io::BufRead,
+    path::{Path, PathBuf},
+    pin::Pin,
+    process::Output,
+};
 
 use anyhow::{Result, bail};
 use tokio::process::Command;
 use tracing::{info, warn};
 
 use crate::{builder::Builder, cmd::NIX};
+
+pub fn has_file<P>(src: &PathBuf, name: P) -> bool
+where
+    P: AsRef<Path>,
+{
+    src.join(name).is_file()
+}
 
 pub const FAKE_HASH: &str = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 

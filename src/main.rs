@@ -53,7 +53,7 @@ use crate::{
         rust::{cargo_deps_hash, load_cargo_lock, write_cargo_lock},
     },
     license::{LICENSE_STORE, load_license},
-    utils::{CommandExt, FAKE_HASH, ResultExt, fod_hash},
+    utils::{CommandExt, FAKE_HASH, ResultExt, fod_hash, has_file},
 };
 
 #[derive(Debug, Deserialize)]
@@ -362,15 +362,15 @@ async fn run() -> Result<()> {
         PathBuf::from(&src)
     };
 
-    let has_cargo = src_dir.join("Cargo.toml").is_file();
-    let cargo_lock = File::open(src_dir.join("Cargo.lock"));
-    let has_cargo_lock = cargo_lock.is_ok();
-    let has_cmake = src_dir.join("CMakeLists.txt").is_file();
-    let has_go = src_dir.join("go.mod").is_file();
-    let has_meson = src_dir.join("meson.build").is_file();
-    let has_zig = src_dir.join("build.zig").is_file();
-    let pyproject_toml = src_dir.join("pyproject.toml");
-    let has_python = pyproject_toml.is_file() || src_dir.join("setup.py").is_file();
+    let is_present = (|s: &str| has_file(src_dir, s));
+
+    let has_cargo = is_present("Cargo.toml");
+    let has_cargo_lock = is_present("Cargo.lock");
+    let has_cmake = is_present("CMakeLists.txt");
+    let has_go = is_present("go.mod");
+    let has_meson = is_present("meson.build");
+    let has_zig = is_present("build.zig");
+    let has_python = is_present("pyproject.toml") || is_present("setup.py");
 
     let builder = match (opts.builder, opts.cargo_vendor) {
         (Some(builder), rust @ Some(vendor)) if has_cargo => match builder {
@@ -640,7 +640,7 @@ async fn run() -> Result<()> {
                 None => CargoVendorData::None,
             };
 
-            let mut pyproject = Pyproject::from_path(pyproject_toml);
+            let mut pyproject = Pyproject::from_path(src_dir.join("pyproject.toml"));
 
             if let Some(name) = pyproject.get_name() {
                 python_import = Some(name);
