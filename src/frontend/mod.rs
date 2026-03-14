@@ -26,6 +26,8 @@ pub trait Frontend {
 
     fn builder(&mut self, builders: Vec<Builder>) -> Result<Builder>;
 
+    fn root(&mut self, choices: Vec<String>) -> Result<String>;
+
     fn output(&mut self, pname: &str, builder: &Builder) -> Result<PathBuf>;
 
     fn overwrite(&mut self, path: &Path) -> Result<bool>;

@@ -36,6 +36,7 @@ use tempfile::tempdir;
 use tokio::process::Command;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::EnvFilter;
+use walkdir::WalkDir;
 use which::which;
 use zip::ZipArchive;
 
@@ -76,6 +77,20 @@ struct Outputs {
 #[tokio::main]
 async fn main() -> Result<()> {
     run().await
+}
+
+fn is_source(dir: &PathBuf) -> bool {
+    [
+        "CMakeLists.txt",
+        "go.mod",
+        "meson.build",
+        "build.zig",
+        "pyproject.toml",
+        "setup.py",
+    ]
+    .into_iter()
+    .any(|name| has_file(dir, name.to_string()))
+        || (has_file(dir, "Cargo.toml") && has_file(dir, "Cargo.lock"))
 }
 
 async fn run() -> Result<()> {
@@ -340,7 +355,7 @@ async fn run() -> Result<()> {
         .out;
 
     let tmp;
-    let src_dir = if let MaybeFetcher::Known(FetcherDispatch::FetchPypi(ref fetcher)) = fetcher {
+    let tmp_root = if let MaybeFetcher::Known(FetcherDispatch::FetchPypi(ref fetcher)) = fetcher {
         let file = File::open(&src)?;
         tmp = tempdir().context("failed to create temporary directory")?;
         let tmp = tmp.path();
@@ -362,7 +377,35 @@ async fn run() -> Result<()> {
         PathBuf::from(&src)
     };
 
-    let is_present = (|s: &str| has_file(src_dir, s));
+    let mut choices: Vec<String> = [".".into()].into();
+    choices.extend(
+        WalkDir::new(&tmp_root)
+            .min_depth(1)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|res| match res {
+                Ok(e) => {
+                    let path = e.clone().into_path();
+                    if e.file_type().is_dir() && is_source(&path) {
+                        Some(
+                            path.strip_prefix(&tmp_root)
+                                .ok()?
+                                .to_string_lossy()
+                                .to_string(),
+                        )
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }),
+    );
+
+    let source_root = frontend.root(choices)?;
+
+    let src_dir = tmp_root.join(PathBuf::from(&source_root));
+
+    let is_present = |s: &str| has_file(&src_dir, s);
 
     let has_cargo = is_present("Cargo.toml");
     let has_cargo_lock = is_present("Cargo.lock");
@@ -873,6 +916,10 @@ async fn run() -> Result<()> {
         }
     };
 
+    if source_root != "." {
+        writeln!(out, "  sourceRoot = \"source/{source_root}\";\n")?;
+    }
+
     if native_build_inputs {
         match builder {
             Builder::BuildPythonPackage { .. } => {
@@ -952,7 +999,7 @@ async fn run() -> Result<()> {
     }
 
     let mut desc = desc.trim_matches(|c: char| !c.is_alphanumeric()).to_owned();
-    desc.get_mut(0 .. 1).map(str::make_ascii_uppercase);
+    desc.get_mut(0..1).map(str::make_ascii_uppercase);
     write!(out, "  ")?;
     writedoc! {out, r"
         meta = {{
@@ -1158,7 +1205,7 @@ fn get_version(rev: &str) -> &str {
 }
 
 fn get_version_number(rev: &str) -> &str {
-    &rev[rev.find(char::is_numeric).unwrap_or_default() ..]
+    &rev[rev.find(char::is_numeric).unwrap_or_default()..]
 }
 
 async fn maybe_format(content: &str, mut file: File, cmd: Command) -> Result<()> {

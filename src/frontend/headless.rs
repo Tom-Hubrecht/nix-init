@@ -41,6 +41,10 @@ impl Frontend for Headless {
         Ok(builders[0])
     }
 
+    fn root(&mut self, choices: Vec<String>) -> Result<String> {
+        Ok(choices[0].to_owned())
+    }
+
     fn output(&mut self, pname: &str, builder: &Builder) -> Result<PathBuf> {
         Ok(match by_name_path(pname, builder) {
             Some(path) => path.into(),

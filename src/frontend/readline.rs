@@ -126,6 +126,22 @@ impl Frontend for Readline {
             .unwrap_or_else(|| &builders[0]))
     }
 
+    fn root(&mut self, choices: Vec<String>) -> Result<String> {
+        self.editor.set_helper(Some(Prompter::List(choices)));
+        let choice = self
+            .editor
+            .readline(&prompt("Which directory should be used?"))?;
+        let Some(Prompter::List(choices)) = self.editor.helper_mut() else {
+            unreachable!();
+        };
+        Ok(choice
+            .parse()
+            .ok()
+            .and_then(|i: usize| choices.get(i))
+            .unwrap_or_else(|| &choices[0])
+            .to_owned())
+    }
+
     fn output(&mut self, pname: &str, builder: &Builder) -> Result<PathBuf> {
         self.editor
             .set_helper(Some(Prompter::Path(FilenameCompleter::new())));

@@ -3278,6 +3278,7 @@ dependencies = [
  "trycmd",
  "url",
  "versions",
+ "walkdir",
  "which",
  "xdg",
  "zip",
