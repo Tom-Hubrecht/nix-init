@@ -381,7 +381,7 @@ async fn run() -> Result<()> {
     choices.extend(
         WalkDir::new(&tmp_root)
             .min_depth(1)
-            .max_depth(3)
+            .max_depth(1 + opts.walk_depth)
             .into_iter()
             .filter_map(|res| match res {
                 Ok(e) => {

@@ -68,6 +68,10 @@ pub struct Opts {
     /// Specify the config file
     #[arg(short, long)]
     pub config: Option<PathBuf>,
+
+    /// Maximum depth for sourceRoot selection
+    #[arg(long, default_value_t = 3)]
+    pub walk_depth: usize,
 }
 
 #[derive(Clone, ValueEnum)]
